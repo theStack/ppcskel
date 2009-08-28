@@ -41,6 +41,12 @@ Copyright (C) 2008, 2009	Sven Peter <svenpeter@gmail.com>
 #define IPC_SYS_MASK16	0x0100010d
 #define IPC_SYS_MASK8	0x0100010e
 
+//ahb and chache stuff
+#define IPC_AHB_FLUSH_TO 	0x01100101
+#define IPC_AHB_FLUSH_FROM 	0x01100102
+#define IPC_DC_FLUSHRANGE 	0x01100103
+#define IPC_DC_INVALIDATERANGE 0x01100104
+
 #define	IPC_NAND_RESET	0x00010000
 #define IPC_NAND_GETID	0x00010001
 #define IPC_NAND_READ	0x00010002
@@ -163,6 +169,15 @@ static inline void ipc_sys_mask8(u32 addr, u8 clear, u32 set)
 {
 	ipc_post(IPC_SYS_MASK8, 0, 3, addr, clear, set);
 }
+
+static inline void ipc_ahb_flush_to(enum AHBDEV t)
+{
+	ipc_post(IPC_AHB_FLUSH_TO, t);
+}
+#define IPC_AHB_FLUSH_TO 	0x01100101
+#define IPC_AHB_FLUSH_FROM 	0x01100102
+#define IPC_DC_FLUSHRANGE 	0x01100103
+#define IPC_DC_INVALIDATERANGE 0x01100104
 
 static inline void ipc_ping(void)
 {
