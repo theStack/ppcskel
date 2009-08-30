@@ -24,6 +24,7 @@ Copyright (C) 2009              John Kelley <wiidev@kelley.ca>
 #include "video_low.h"
 #include "input.h"
 #include "console.h"
+#include "crypto.h"
 
 #define MINIMUM_MINI_VERSION 0x00010001
 
@@ -109,9 +110,19 @@ int main(void)
 			; // better ideas welcome!
 	}
 
-    print_str_noscroll(112, 112, "ohai, world!\n");
-
 	testOTP();
+
+#define HW_AHBPROT (0x0d800000+0x64)
+	printf("HW_AHBPROT: %08X\n", read32(HW_AHBPROT));
+
+	u8 message[64]; // empty string
+	memset(message, 0, 64);
+	message[0] = 'x';
+	message[1] = 0x80; 
+	message[63] = 8;
+
+	sha1_reset();
+	sha1_hash(message, 1);
 
 	printf("bye, world!\n");
 
