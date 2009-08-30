@@ -85,6 +85,15 @@ int main(void)
 	// clear interrupt mask
 	write32(0x0c003004, 0);
 
+	// some tests whether accessing hardware registers
+	// works without problems (caching issues etc.)
+#define HW_TIMER (0xd800000+0x010)
+	write32(HW_TIMER, 0);
+	udelay(500000);
+	u32 test1 = read32(HW_TIMER);
+	udelay(500000);
+	u32 test2 = read32(HW_TIMER);
+
 	ipc_initialize();
 	ipc_slowping();
 
@@ -100,6 +109,7 @@ int main(void)
 	u16 mini_version_major = version >> 16 & 0xFFFF;
 	u16 mini_version_minor = version & 0xFFFF;
 	printf("Mini version: %d.%0d\n", mini_version_major, mini_version_minor);
+	printf("test1: %d, test2: %d\n", test1, test2);
 
 	if (version < MINIMUM_MINI_VERSION) {
 		printf("Sorry, this version of MINI (armboot.bin)\n"
