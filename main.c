@@ -115,12 +115,19 @@ int main(void)
 #define HW_AHBPROT (0x0d800000+0x64)
 	printf("HW_AHBPROT: %08X\n", read32(HW_AHBPROT));
 
-	u8 message[64]; // empty string
+	// expected sha1 hash of empty string "":
+	// da39a3ee5e6b4b0d3255bfef95601890afd80709
+	u8 message[64]; 
 	memset(message, 0, 64);
+	message[0] = 0x80;
+	sha1_reset();
+	sha1_hash(message, 1);
+
+	// expected sha1 hash of string "x":
+	// 11f6ad8ec52a2984abaafd7c3b516503785c2072
 	message[0] = 'x';
 	message[1] = 0x80; 
 	message[63] = 8;
-
 	sha1_reset();
 	sha1_hash(message, 1);
 

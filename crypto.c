@@ -16,15 +16,11 @@
 #define SHA_CTRL_FLAG_ERR  (1<<29)
 #define SHA_CTRL_AREA_BLOCK ((1<<10) - 1)
 
-#define SHA_DEBUG_STR "--- sha1 debug --- "
-
 void sha1_reset(void)
 {
 	// reset sha-1 engine
-	printf(SHA_DEBUG_STR "SHA_CTRL: %08X\n", read32(SHA_CTRL));
 	write32(SHA_CTRL, read32(SHA_CTRL) & ~(SHA_CTRL_FLAG_EXEC));
 	while ((read32(SHA_CTRL) & SHA_CTRL_FLAG_EXEC) != 0);
-	printf(SHA_DEBUG_STR "SHA_CTRL: %08X\n", read32(SHA_CTRL));
 
 	// initialization vector
 	write32(SHA_H0, 0x67452301);
@@ -32,16 +28,15 @@ void sha1_reset(void)
 	write32(SHA_H2, 0x98BADCFE);
 	write32(SHA_H3, 0x10325476);
 	write32(SHA_H4, 0xC3D2E1F0);
-	sha1_showresult();
 }
 
 void sha1_showresult(void)
 {
-	printf(SHA_DEBUG_STR "SHA_H0: %08X\n", read32(SHA_H0));
-	printf(SHA_DEBUG_STR "SHA_H1: %08X\n", read32(SHA_H1));
-	printf(SHA_DEBUG_STR "SHA_H2: %08X\n", read32(SHA_H2));
-	printf(SHA_DEBUG_STR "SHA_H3: %08X\n", read32(SHA_H3));
-	printf(SHA_DEBUG_STR "SHA_H4: %08X\n", read32(SHA_H4));
+	printf("SHA-1 controller says (H0|H1|H2|H3|H4): "
+			"%08X|%08X|%08X|%08X|%08X\n",
+			read32(SHA_H0), read32(SHA_H1),
+			read32(SHA_H2), read32(SHA_H3),
+			read32(SHA_H4));
 }
 
 void sha1_hash(u8 *src, u32 num_blocks)
@@ -49,15 +44,13 @@ void sha1_hash(u8 *src, u32 num_blocks)
 	// assign block to local copy which is 64-byte aligned
 	static u8 block[64] ALIGNED(64);
 	memcpy(block, src, 64);
-	printf("block[0]=%d, block[1]=%d, block[2]=%d, block[63]=%d\n",
-		block[0], block[1], block[2], block[63]);
+
+	// royal flush :)
+	sync_after_write(block, 64);
 
 	// tell sha1 controller the block source address
 	write32(SHA_SRC, virt_to_phys(block));
 	
-	printf(SHA_DEBUG_STR "local block array address: %08X\n", &(block[0]));
-	printf(SHA_DEBUG_STR "sha1 controller block array address: %08X\n", read32(SHA_SRC));
-
 	// tell sha1 controller number of blocks
 	if (num_blocks != 0)
 		num_blocks--;
@@ -68,7 +61,6 @@ void sha1_hash(u8 *src, u32 num_blocks)
 	while (read32(SHA_CTRL) & SHA_CTRL_FLAG_EXEC);
 
 	// show results
+	printf("We proudly present the hash value of the string \"%s\":\n", block);
 	sha1_showresult();
-
-	printf(SHA_DEBUG_STR "SHA_CTRL: %08X\n", read32(SHA_CTRL));
 }
