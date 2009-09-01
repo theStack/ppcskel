@@ -46,7 +46,7 @@ void sha1_hash(u8 *src, u32 num_blocks)
 	memcpy(block, src, 64);
 
 	// royal flush :)
-	sync_after_write(block, 64);
+	sync_after_write(block, 64*num_blocks);
 
 	// tell sha1 controller the block source address
 	write32(SHA_SRC, virt_to_phys(block));
