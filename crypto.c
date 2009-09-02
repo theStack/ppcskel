@@ -1,6 +1,7 @@
 #include "crypto.h"
 #include "bootmii_ppc.h"
 #include "string.h"
+#include "malloc.h"
 
 #define SHA_BASE	0x0d030000
 #define	SHA_CTRL	(SHA_BASE+0x00)
@@ -42,8 +43,8 @@ void sha1_showresult(void)
 void sha1_hash(u8 *src, u32 num_blocks)
 {
 	// assign block to local copy which is 64-byte aligned
-	static u8 block[64] ALIGNED(64);
-	memcpy(block, src, 64);
+	u8 *block = memalign(64, 64*num_blocks);
+	memcpy(block, src, 64*num_blocks);
 
 	// royal flush :)
 	sync_after_write(block, 64*num_blocks);
@@ -59,6 +60,9 @@ void sha1_hash(u8 *src, u32 num_blocks)
 	// fire up hashing and wait till its finished
 	write32(SHA_CTRL, read32(SHA_CTRL) | SHA_CTRL_FLAG_EXEC);
 	while (read32(SHA_CTRL) & SHA_CTRL_FLAG_EXEC);
+
+	// free the aligned data
+	free(block);
 
 	// show results
 	printf("We proudly present the hash value of the string \"%s\":\n", block);
