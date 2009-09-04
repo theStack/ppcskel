@@ -19,17 +19,37 @@ A million repetitions of "a"
 #include "bootmii_ppc.h"
 #include "hollywood.h"
 #include "malloc.h"
+#include "types.h"
 
 //should be divisibly by four
 #define BLOCKSIZE 32
 
-void SHA1Transform(unsigned long state[5], unsigned char buffer[64]) {
+#define SHA_CMD_FLAG_EXEC (1<<31)
+#define SHA_CMD_FLAG_IRQ  (1<<30)
+#define SHA_CMD_FLAG_ERR  (1<<29)
+#define SHA_CMD_AREA_BLOCK ((1<<10) - 1)
+
+typedef struct {
+    unsigned long state[5];
+    unsigned long count[2];
+    unsigned char buffer[64];
+} SHA1_CTX;
+
+typedef u32 sha1[5];
+
+static void SHA1Transform(unsigned long state[5], unsigned char buffer[64]);
+static void SHA1Transforml(unsigned long state[5], unsigned char buffer[64], u32 len);
+static void SHA1Init(SHA1_CTX* context);
+static void SHA1Update(SHA1_CTX* context, unsigned char* data, unsigned int len);
+static void SHA1Final(unsigned char digest[20], SHA1_CTX* context);
+
+static void SHA1Transform(unsigned long state[5], unsigned char buffer[64]) {
 	SHA1Transforml(state, buffer, 1);
 }
 
 /* Hash a single 512-bit block. This is the core of the algorithm. */
 
-void SHA1Transforml(unsigned long state[5], unsigned char buffer[64], u32 len)
+static void SHA1Transforml(unsigned long state[5], unsigned char buffer[64], u32 len)
 {
     /* Copy context->state[] to working vars */
     write32(SHA_H0, state[0]);
@@ -42,7 +62,7 @@ void SHA1Transforml(unsigned long state[5], unsigned char buffer[64], u32 len)
 	num_blocks = len;
 
 	// assign block to local copy which is 64-byte aligned
-	static u8 block[64*BLOCKSIZE] ALIGNED(BLOCKSIZE*64);
+	static u8 block[64*BLOCKSIZE] ALIGNED(64);
 	// for further improvments!
 	// u8 *block = memalign(64, 64*num_blocks);
 	memcpy(block, buffer, 64*num_blocks);
@@ -76,7 +96,7 @@ void SHA1Transforml(unsigned long state[5], unsigned char buffer[64], u32 len)
 
 /* SHA1Init - Initialize new context */
 
-void SHA1Init(SHA1_CTX* context)
+static void SHA1Init(SHA1_CTX* context)
 {
 	// reset sha-1 engine
 	write32(SHA_CMD, read32(SHA_CMD) & ~(SHA_CMD_FLAG_EXEC));
@@ -94,7 +114,7 @@ void SHA1Init(SHA1_CTX* context)
 
 /* Run your data through this. */
 
-void SHA1Update(SHA1_CTX* context, unsigned char* data, unsigned int len)
+static void SHA1Update(SHA1_CTX* context, unsigned char* data, unsigned int len)
 {
 	unsigned int i, j;
 
@@ -127,7 +147,7 @@ void SHA1Update(SHA1_CTX* context, unsigned char* data, unsigned int len)
 
 /* Add padding and return the message digest. */
 
-void SHA1Final(unsigned char digest[20], SHA1_CTX* context)
+static void SHA1Final(unsigned char digest[20], SHA1_CTX* context)
 {
 unsigned long i, j;
 unsigned char finalcount[8];
