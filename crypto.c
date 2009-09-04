@@ -57,14 +57,6 @@ void sha1_hash(u8 *src, u32 num_blocks)
 		num_blocks--;
 	write32(SHA_CTRL, (read32(SHA_CTRL) & ~(SHA_CTRL_AREA_BLOCK)) | num_blocks);
 
-	// fire up hashing and wait till its finished
-	write32(SHA_CTRL, read32(SHA_CTRL) | SHA_CTRL_FLAG_EXEC);
-	while (read32(SHA_CTRL) & SHA_CTRL_FLAG_EXEC);
-
-	// free the aligned data
-	free(block);
-
-	// show results
-	printf("We proudly present the hash value of the string \"%s\":\n", block);
-	sha1_showresult();
+	// fire up hashing and hope that an irq will arise when it's finished :)
+	write32(SHA_CTRL, read32(SHA_CTRL) | SHA_CTRL_FLAG_EXEC | SHA_CTRL_FLAG_IRQ);
 }

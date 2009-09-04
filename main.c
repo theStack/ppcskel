@@ -99,9 +99,9 @@ int main(void)
 	irq_initialize();
 	irq_bw_enable(BW_PI_IRQ_RESET);
 	irq_bw_enable(BW_PI_IRQ_HW); //hollywood pic
-	irq_hw_enable(IRQ_OHCI0);
+	irq_hw_enable(IRQ_SHA1);
 
-	ohci_init();
+	//ohci_init();
 
 	u32 version = ipc_getvers();
 	u16 mini_version_major = version >> 16 & 0xFFFF;
@@ -123,6 +123,9 @@ int main(void)
 	message[0] = 0x80;
 	sha1_reset();
 	sha1_hash(message, 1);
+
+	printf("just waiting for the next one...\n");
+	udelay(2000000); // wait some time...
 
 	// expected sha1 hash of string "x":
 	// 11f6ad8ec52a2984abaafd7c3b516503785c2072

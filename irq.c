@@ -48,7 +48,7 @@ void irq_handler(void)
 {
 	u32 enabled = read32(BW_PI_IRQMASK);
 	u32 flags = read32(BW_PI_IRQFLAG);
-	printf("flags1: 0x%08X\n", flags);
+	//printf("flags1: 0x%08X\n", flags);
 
 	flags = flags & enabled;
 
@@ -60,7 +60,7 @@ void irq_handler(void)
 		u32 hw_enabled = read32(HW_PPCIRQMASK);
 		u32 hw_flags = read32(HW_PPCIRQFLAG);
 
-		printf("In IRQ handler: 0x%08x 0x%08x 0x%08x\n", hw_enabled, hw_flags, hw_flags & hw_enabled);
+		//printf("In IRQ handler: 0x%08x 0x%08x 0x%08x\n", hw_enabled, hw_flags, hw_flags & hw_enabled);
 
 		hw_flags = hw_flags & hw_enabled;
 
@@ -100,6 +100,14 @@ void irq_handler(void)
 			//		printf("IRQ: AES\n");
 			write32(HW_PPCIRQFLAG, IRQF_AES);
 		}
+		if (hw_flags & IRQF_SHA1) {
+			write32(HW_PPCIRQFLAG, IRQF_SHA1);
+
+			// show results
+			printf("--- SHA1 controller IRQ occured \\o/ Result:\n");
+			sha1_showresult();
+			printf("\n");
+		}
 		if (hw_flags & IRQF_SDHC) {
 			//		printf("IRQ: SDHC\n");
 			write32(HW_PPCIRQFLAG, IRQF_SDHC);
@@ -122,15 +130,8 @@ void irq_handler(void)
 			write32(HW_PPCIRQFLAG, hw_flags);
 		}
 
-		printf("hw_flags1: 0x%08x\n", read32(HW_PPCIRQFLAG));
-
-		// quirk for flipper pic? TODO :/
-		write32(HW_PPCIRQMASK, 0);
-
-		write32(BW_PI_IRQFLAG, 1<<BW_PI_IRQ_HW);
-		printf("flags2: 0x%08X\n", read32(BW_PI_IRQFLAG));
-		
-		write32(HW_PPCIRQMASK, hw_enabled);
+		//printf("hw_flags1: 0x%08x\n", read32(HW_PPCIRQFLAG));
+		//printf("flags2: 0x%08X\n", read32(BW_PI_IRQFLAG));
 	}
 }
 
