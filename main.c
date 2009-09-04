@@ -26,6 +26,7 @@ Copyright (C) 2009              John Kelley <wiidev@kelley.ca>
 #include "console.h"
 #include "ohci.h"
 #include "irq.h"
+#include "crypto.h"
 
 #define MINIMUM_MINI_VERSION 0x00010001
 
@@ -115,11 +116,21 @@ int main(void)
 			; // better ideas welcome!
 	}
 
-	/*
-    print_str_noscroll(112, 112, "ohai, world!\n");
-	testOTP();
-	printf("bye, world!\n");
-	*/
+	// expected sha1 hash of empty string "":
+	// da39a3ee5e6b4b0d3255bfef95601890afd80709
+	u8 message[64]; 
+	memset(message, 0, 64);
+	message[0] = 0x80;
+	sha1_reset();
+	sha1_hash(message, 1);
+
+	// expected sha1 hash of string "x":
+	// 11f6ad8ec52a2984abaafd7c3b516503785c2072
+	message[0] = 'x';
+	message[1] = 0x80; 
+	message[63] = 8;
+	sha1_reset();
+	sha1_hash(message, 1);
 
 	while(1) {
 		// just to get sure we are still in this loop
