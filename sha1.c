@@ -12,31 +12,24 @@ A million repetitions of "a"
   34AA973C D4C4DAA4 F61EEB2B DBAD2731 6534016F
 */
 
-/* #define LITTLE_ENDIAN * This should be #define'd if true. */
 #define SHA1HANDSOFF
 
 #include "string.h"
 #include "sha1.h"
 #include "bootmii_ppc.h"
 #include "hollywood.h"
+#include "malloc.h"
 
-#define rol(value, bits) (((value) << (bits)) | ((value) >> (32 - (bits))))
+//should be divisibly by four
+#define BLOCKSIZE 32
 
-/* blk0() and blk() perform the initial expand. */
-/* I got the idea of expanding during the round function from SSLeay */
-#ifdef LITTLE_ENDIAN
-#define blk0(i) (block->l[i] = (rol(block->l[i],24)&0xFF00FF00) \
-    |(rol(block->l[i],8)&0x00FF00FF))
-#else
-#define blk0(i) block->l[i]
-#endif
-#define blk(i) (block->l[i&15] = rol(block->l[(i+13)&15]^block->l[(i+8)&15] \
-    ^block->l[(i+2)&15]^block->l[i&15],1))
-
+void SHA1Transform(unsigned long state[5], unsigned char buffer[64]) {
+	SHA1Transforml(state, buffer, 1);
+}
 
 /* Hash a single 512-bit block. This is the core of the algorithm. */
 
-void SHA1Transform(unsigned long state[5], unsigned char buffer[64])
+void SHA1Transforml(unsigned long state[5], unsigned char buffer[64], u32 len)
 {
     /* Copy context->state[] to working vars */
     write32(SHA_H0, state[0]);
@@ -46,10 +39,10 @@ void SHA1Transform(unsigned long state[5], unsigned char buffer[64])
     write32(SHA_H4, state[4]);
 
 	static u32 num_blocks;
-	num_blocks = 1;
+	num_blocks = len;
 
 	// assign block to local copy which is 64-byte aligned
-	static u8 block[64] ALIGNED(64);
+	static u8 block[64*BLOCKSIZE] ALIGNED(BLOCKSIZE*64);
 	// for further improvments!
 	// u8 *block = memalign(64, 64*num_blocks);
 	memcpy(block, buffer, 64*num_blocks);
@@ -112,6 +105,16 @@ void SHA1Update(SHA1_CTX* context, unsigned char* data, unsigned int len)
     if ((j + len) > 63) {
         memcpy(&context->buffer[j], data, (i = 64-j));
         SHA1Transform(context->state, context->buffer);
+		// try bigger blocks at once
+        for ( ; i + 63 + ((BLOCKSIZE-1)*64) < len; i += (64 + (BLOCKSIZE-1)*64)) {
+            SHA1Transforml(context->state, &data[i], BLOCKSIZE);
+        }
+        for ( ; i + 63 + (((BLOCKSIZE/2)-1)*64) < len; i += (64 + ((BLOCKSIZE/2)-1)*64)) {
+            SHA1Transforml(context->state, &data[i], BLOCKSIZE/2);
+        }
+        for ( ; i + 63 + (((BLOCKSIZE/4)-1)*64) < len; i += (64 + ((BLOCKSIZE/4)-1)*64)) {
+            SHA1Transforml(context->state, &data[i], BLOCKSIZE/4);
+        }
         for ( ; i + 63 < len; i += 64) {
             SHA1Transform(context->state, &data[i]);
         }
@@ -159,5 +162,33 @@ void SHA1(unsigned char *ptr, unsigned int size, unsigned char *outbuf) {
   SHA1Init(&ctx);
   SHA1Update(&ctx, ptr, size);
   SHA1Final(outbuf, &ctx);
+}
+
+static void SHA1TestIt(const char *str, u32 len)
+{
+	u8 *in = malloc(len*sizeof(u8));
+	sha1 out;
+	strlcpy((char*)in, str, len+1);
+
+	u32 diff = read32(HW_TIMER);
+	SHA1(in, len, (u8*) out);
+	diff = read32(HW_TIMER)-diff;
+
+	printf("SHA-1 (in hardware) says (H0|H1|H2|H3|H4): %08X|%08X|%08X|%08X|%08X this was calculatet in %02d (hollywood-)cycles\n", out[0], out[1], out[2], out[3], out[4], diff);
+}
+
+
+void SHA1TestCases(void)
+{
+	// expected sha1 hash of string "lasasdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5" (len = 3811)
+	// 33ad104c4fd0de2e90edd6f6103de8304043ab20
+	SHA1TestIt("lasasdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5asdfasghasfghahadghadghadfghasdgfasdgfafghasdfgasdfasdfasdfasdfasdfahadhjaer5yq35635uyjzgzdghad56q346aw456w46aw5", 3811);
+	// expected sha1 hash of string "asdf" (len = 4)
+	// 3da541559918a808c2402bba5012f6c60b27661c
+	SHA1TestIt("asdf", 4);
+
+	// expected sha1 hash of string "asdfasdfjalsdfjklasdkjflaksdjflaksdjflkasjdfklajsdfkljasldkfjlaskdjflkajsdfakljsdfklasjddflkjalskdjfasldfjlasdkjflaskjdflaksdf" (len = 126)
+	// 74e1e9e5489d08dc65108aff3a21756e8fc269d2
+	SHA1TestIt("asdfasdfjalsdfjklasdkjflaksdjflaksdjflkasjdfklajsdfkljasldkfjlaskdjflkajsdfakljsdfklasjddflkjalskdjfasldfjlasdkjflaskjdflaksdf", 126);
 }
 

@@ -113,25 +113,7 @@ int main(void)
 
 	printf("===============================\n");
 
-	// expected sha1 hash of string "asdf":
-	// 3da541559918a808c2402bba5012f6c60b27661c
-
-#define LEN 4
-	u8 *in = malloc(LEN*sizeof(u8));
-	sha1 out;
-	strlcpy((char*)in, "asdf", LEN+1);
-
-	u32 diff = read32(HW_TIMER);
-	SHA1(in, LEN, (u8*) out);
-	printf("HW_TIMER diff: 0x%08X\n", read32(HW_TIMER)-diff);
-
-	printf("SHA-1 (in software) of \"%s\" says (H0|H1|H2|H3|H4): "
-			"%08X|%08X|%08X|%08X|%08X\n", in,
-			out[0], 
-			out[1], 
-			out[2], 
-			out[3], 
-			out[4]);
+	SHA1TestCases();
 
 	printf("bye, world!\n");
 
