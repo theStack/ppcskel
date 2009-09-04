@@ -30,9 +30,9 @@ A million repetitions of "a"
 #define SHA_CMD_AREA_BLOCK ((1<<10) - 1)
 
 typedef struct {
-    unsigned long state[5];
-    unsigned long count[2];
-    unsigned char buffer[64];
+	unsigned long state[5];
+	unsigned long count[2];
+	unsigned char buffer[64];
 } SHA1_CTX;
 
 typedef u32 sha1[5];
@@ -51,12 +51,12 @@ static void SHA1Transform(unsigned long state[5], unsigned char buffer[64]) {
 
 static void SHA1Transforml(unsigned long state[5], unsigned char buffer[64], u32 len)
 {
-    /* Copy context->state[] to working vars */
-    write32(SHA_H0, state[0]);
-    write32(SHA_H1, state[1]);
-    write32(SHA_H2, state[2]);
-    write32(SHA_H3, state[3]);
-    write32(SHA_H4, state[4]);
+	/* Copy context->state[] to working vars */
+	write32(SHA_H0, state[0]);
+	write32(SHA_H1, state[1]);
+	write32(SHA_H2, state[2]);
+	write32(SHA_H3, state[3]);
+	write32(SHA_H4, state[4]);
 
 	static u32 num_blocks;
 	num_blocks = len;
@@ -85,12 +85,12 @@ static void SHA1Transforml(unsigned long state[5], unsigned char buffer[64], u32
 	// free the aligned data
 	// free(block);
 
-    /* Add the working vars back into context.state[] */
-    state[0] = read32(SHA_H0);
-    state[1] = read32(SHA_H1);
-    state[2] = read32(SHA_H2);
-    state[3] = read32(SHA_H3);
-    state[4] = read32(SHA_H4);
+	/* Add the working vars back into context.state[] */
+	state[0] = read32(SHA_H0);
+	state[1] = read32(SHA_H1);
+	state[2] = read32(SHA_H2);
+	state[3] = read32(SHA_H3);
+	state[4] = read32(SHA_H4);
 }
 
 
@@ -102,13 +102,13 @@ static void SHA1Init(SHA1_CTX* context)
 	write32(SHA_CMD, read32(SHA_CMD) & ~(SHA_CMD_FLAG_EXEC));
 	while ((read32(SHA_CMD) & SHA_CMD_FLAG_EXEC) != 0);
 
-    /* SHA1 initialization constants */
-    context->state[0] = 0x67452301;
-    context->state[1] = 0xEFCDAB89;
-    context->state[2] = 0x98BADCFE;
-    context->state[3] = 0x10325476;
-    context->state[4] = 0xC3D2E1F0;
-    context->count[0] = context->count[1] = 0;
+	/* SHA1 initialization constants */
+	context->state[0] = 0x67452301;
+	context->state[1] = 0xEFCDAB89;
+	context->state[2] = 0x98BADCFE;
+	context->state[3] = 0x10325476;
+	context->state[4] = 0xC3D2E1F0;
+	context->count[0] = context->count[1] = 0;
 }
 
 
@@ -118,30 +118,30 @@ static void SHA1Update(SHA1_CTX* context, unsigned char* data, unsigned int len)
 {
 	unsigned int i, j;
 
-    j = (context->count[0] >> 3) & 63;
-    if ((context->count[0] += len << 3) < (len << 3)) 
+	j = (context->count[0] >> 3) & 63;
+	if ((context->count[0] += len << 3) < (len << 3)) 
 		context->count[1]++;
-    context->count[1] += (len >> 29);
-    if ((j + len) > 63) {
-        memcpy(&context->buffer[j], data, (i = 64-j));
-        SHA1Transform(context->state, context->buffer);
+	context->count[1] += (len >> 29);
+	if ((j + len) > 63) {
+		memcpy(&context->buffer[j], data, (i = 64-j));
+		SHA1Transform(context->state, context->buffer);
 		// try bigger blocks at once
-        for ( ; i + 63 + ((BLOCKSIZE-1)*64) < len; i += (64 + (BLOCKSIZE-1)*64)) {
-            SHA1Transforml(context->state, &data[i], BLOCKSIZE);
-        }
-        for ( ; i + 63 + (((BLOCKSIZE/2)-1)*64) < len; i += (64 + ((BLOCKSIZE/2)-1)*64)) {
-            SHA1Transforml(context->state, &data[i], BLOCKSIZE/2);
-        }
-        for ( ; i + 63 + (((BLOCKSIZE/4)-1)*64) < len; i += (64 + ((BLOCKSIZE/4)-1)*64)) {
-            SHA1Transforml(context->state, &data[i], BLOCKSIZE/4);
-        }
-        for ( ; i + 63 < len; i += 64) {
-            SHA1Transform(context->state, &data[i]);
-        }
-        j = 0;
-    }
-    else i = 0;
-    memcpy(&context->buffer[j], &data[i], len - i);
+		for ( ; i + 63 + ((BLOCKSIZE-1)*64) < len; i += (64 + (BLOCKSIZE-1)*64)) {
+			SHA1Transforml(context->state, &data[i], BLOCKSIZE);
+		}
+		for ( ; i + 63 + (((BLOCKSIZE/2)-1)*64) < len; i += (64 + ((BLOCKSIZE/2)-1)*64)) {
+			SHA1Transforml(context->state, &data[i], BLOCKSIZE/2);
+		}
+		for ( ; i + 63 + (((BLOCKSIZE/4)-1)*64) < len; i += (64 + ((BLOCKSIZE/4)-1)*64)) {
+			SHA1Transforml(context->state, &data[i], BLOCKSIZE/4);
+		}
+		for ( ; i + 63 < len; i += 64) {
+			SHA1Transform(context->state, &data[i]);
+		}
+		j = 0;
+	}
+	else i = 0;
+	memcpy(&context->buffer[j], &data[i], len - i);
 }
 
 
@@ -149,39 +149,41 @@ static void SHA1Update(SHA1_CTX* context, unsigned char* data, unsigned int len)
 
 static void SHA1Final(unsigned char digest[20], SHA1_CTX* context)
 {
-unsigned long i, j;
-unsigned char finalcount[8];
+	unsigned long i, j;
+	unsigned char finalcount[8];
 
-    for (i = 0; i < 8; i++) {
-        finalcount[i] = (unsigned char)((context->count[(i >= 4 ? 0 : 1)]
-         >> ((3-(i & 3)) * 8) ) & 255);  /* Endian independent */
-    }
-    SHA1Update(context, (unsigned char *)"\200", 1);
-    while ((context->count[0] & 504) != 448) {
-        SHA1Update(context, (unsigned char *)"\0", 1);
-    }
-    SHA1Update(context, finalcount, 8);  /* Should cause a SHA1Transform() */
-    for (i = 0; i < 20; i++) {
-        digest[i] = (unsigned char)
-         ((context->state[i>>2] >> ((3-(i & 3)) * 8) ) & 255);
-    }
-    /* Wipe variables */
-    i = j = 0;
-    memset(context->buffer, 0, 64);
-    memset(context->state, 0, 20);
-    memset(context->count, 0, 8);
-    memset(&finalcount, 0, 8);
+	for (i = 0; i < 8; i++) {
+		finalcount[i] = (unsigned char)((context->count[(i >= 4 ? 0 : 1)]
+		>> ((3-(i & 3)) * 8) ) & 255);  /* Endian independent */
+	}
+
+	SHA1Update(context, (unsigned char *)"\200", 1);
+	while ((context->count[0] & 504) != 448) {
+		SHA1Update(context, (unsigned char *)"\0", 1);
+	}
+	SHA1Update(context, finalcount, 8);  /* Should cause a SHA1Transform() */
+	for (i = 0; i < 20; i++) {
+		digest[i] = (unsigned char)
+		((context->state[i>>2] >> ((3-(i & 3)) * 8) ) & 255);
+	}
+	/* Wipe variables */
+	i = j = 0;
+	memset(context->buffer, 0, 64);
+	memset(context->state, 0, 20);
+	memset(context->count, 0, 8);
+	memset(&finalcount, 0, 8);
 #ifdef SHA1HANDSOFF  /* make SHA1Transform overwrite it's own static vars */
-    SHA1Transform(context->state, context->buffer);
+	SHA1Transform(context->state, context->buffer);
 #endif
 }
 
-void SHA1(unsigned char *ptr, unsigned int size, unsigned char *outbuf) {
-  SHA1_CTX ctx;
+void SHA1(unsigned char *ptr, unsigned int size, unsigned char *outbuf) 
+{
+	SHA1_CTX ctx;
   
-  SHA1Init(&ctx);
-  SHA1Update(&ctx, ptr, size);
-  SHA1Final(outbuf, &ctx);
+	SHA1Init(&ctx);
+	SHA1Update(&ctx, ptr, size);
+	SHA1Final(outbuf, &ctx);
 }
 
 static void SHA1TestIt(const char *str, u32 len)
