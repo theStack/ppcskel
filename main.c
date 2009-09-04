@@ -25,6 +25,8 @@ Copyright (C) 2009              John Kelley <wiidev@kelley.ca>
 #include "input.h"
 #include "console.h"
 #include "crypto.h"
+#include "sha1.h"
+#include "hollywood.h"
 
 #define MINIMUM_MINI_VERSION 0x00010001
 
@@ -110,10 +112,6 @@ int main(void)
 			; // better ideas welcome!
 	}
 
-	testOTP();
-
-#define HW_AHBPROT (0x0d800000+0x64)
-	printf("HW_AHBPROT: %08X\n", read32(HW_AHBPROT));
 
 	// expected sha1 hash of empty string "":
 	// da39a3ee5e6b4b0d3255bfef95601890afd80709
@@ -125,11 +123,36 @@ int main(void)
 
 	// expected sha1 hash of string "x":
 	// 11f6ad8ec52a2984abaafd7c3b516503785c2072
+	
 	message[0] = 'x';
 	message[1] = 0x80; 
 	message[63] = 8;
 	sha1_reset();
 	sha1_hash(message, 1);
+
+
+
+	printf("===============================\n");
+
+	// expected sha1 hash of string "asdf":
+	// 3da541559918a808c2402bba5012f6c60b27661c
+
+#define LEN 4
+	u8 *in = malloc(LEN*sizeof(u8));
+	sha1 out;
+	strlcpy((char*)in, "asdf", LEN+1);
+
+	u32 diff = read32(HW_TIMER);
+	SHA1(in, LEN, (u8*) out);
+	printf("HW_TIMER diff: 0x%08X\n", read32(HW_TIMER)-diff);
+
+	printf("SHA-1 (in software) of \"%s\" says (H0|H1|H2|H3|H4): "
+			"%08X|%08X|%08X|%08X|%08X\n", in,
+			out[0], 
+			out[1], 
+			out[2], 
+			out[3], 
+			out[4]);
 
 	printf("bye, world!\n");
 
