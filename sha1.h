@@ -1,4 +1,12 @@
+#ifndef __SHA1_H__
+#define __SHA1_H__
+
 #include "types.h"
+
+#define SHA_CMD_FLAG_EXEC (1<<31)
+#define SHA_CMD_FLAG_IRQ  (1<<30)
+#define SHA_CMD_FLAG_ERR  (1<<29)
+#define SHA_CMD_AREA_BLOCK ((1<<10) - 1)
 
 typedef struct {
     unsigned long state[5];
@@ -14,3 +22,5 @@ void SHA1Update(SHA1_CTX* context, unsigned char* data, unsigned int len);
 void SHA1Final(unsigned char digest[20], SHA1_CTX* context);
 
 void SHA1(unsigned char *ptr, unsigned int size, unsigned char *outbuf);
+
+#endif
