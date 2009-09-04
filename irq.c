@@ -65,7 +65,25 @@ void irq_handler(void)
 		hw_flags = hw_flags & hw_enabled;
 
 		if(hw_flags & IRQF_TIMER) {
+			printf("ppcirqmask: %08X\n", read32(HW_PPCIRQMASK));
+			printf("[before_flag_clear] ppcirqflag: %08X\n", read32(HW_PPCIRQFLAG));
+			printf("[before_flag_clear] pi irqflag: %08X\n", read32(BW_PI_IRQFLAG));
 			write32(HW_PPCIRQFLAG, IRQF_TIMER);
+			printf("[after_flag_clear] ppcirqflag: %08X\n", read32(HW_PPCIRQFLAG));
+			printf("[after_flag_clear] pi irqflag: %08X\n", read32(BW_PI_IRQFLAG));
+
+			// save timer value and wait till that fuckin' irq occures again
+			u32 starttime = read32(HW_TIMER);
+			while(!(read32(BW_PI_IRQFLAG) & (1<<BW_PI_IRQ_HW))); 
+
+			// boom!
+			u32 lasted = read32(HW_TIMER) - starttime;
+			printf("it took the hardware %d timer counts till that pi irq occured again (that's ~%d us)...\n",
+				lasted, (lasted*527)/1000);
+			printf("[after_irq] ppcirqflag: %08X\n", read32(HW_PPCIRQFLAG));
+			printf("[after_irq] pi irqflag: %08X\n", read32(BW_PI_IRQFLAG));
+			while(1){}
+
 		}
 		if(hw_flags & IRQF_NAND) {
 			//		printf("IRQ: NAND\n");
@@ -107,7 +125,13 @@ void irq_handler(void)
 		}
 		if (hw_flags & IRQF_OHCI0) {
 			printf("IRQ: OHCI0\n");
+			printf("ppcirqmask: %08X\n", read32(HW_PPCIRQMASK));
+			printf("[before_flag_clear] ppcirqflag: %08X\n", read32(HW_PPCIRQFLAG));
+			printf("[before_flag_clear] pi irqflag: %08X\n", read32(BW_PI_IRQFLAG));
 			write32(HW_PPCIRQFLAG, IRQF_OHCI0);
+			printf("[after_flag_clear] ppcirqflag: %08X\n", read32(HW_PPCIRQFLAG));
+			printf("[after_flag_clear] pi irqflag: %08X\n", read32(BW_PI_IRQFLAG));
+			while(1){}
 			//TODO: ohci0_irq();
 		}
 		if (hw_flags & IRQF_OHCI1) {
@@ -125,12 +149,12 @@ void irq_handler(void)
 		printf("hw_flags1: 0x%08x\n", read32(HW_PPCIRQFLAG));
 
 		// quirk for flipper pic? TODO :/
-		write32(HW_PPCIRQMASK, 0);
+		//write32(HW_PPCIRQMASK, 0);
 
-		write32(BW_PI_IRQFLAG, 1<<BW_PI_IRQ_HW);
+		//write32(BW_PI_IRQFLAG, 1<<BW_PI_IRQ_HW);
 		printf("flags2: 0x%08X\n", read32(BW_PI_IRQFLAG));
 		
-		write32(HW_PPCIRQMASK, hw_enabled);
+		//write32(HW_PPCIRQMASK, hw_enabled);
 	}
 }
 

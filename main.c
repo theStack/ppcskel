@@ -26,6 +26,7 @@ Copyright (C) 2009              John Kelley <wiidev@kelley.ca>
 #include "console.h"
 #include "ohci.h"
 #include "irq.h"
+#include "hollywood.h"
 
 #define MINIMUM_MINI_VERSION 0x00010001
 
@@ -78,6 +79,9 @@ void testOTP(void)
 	hexdump(&seeprom, sizeof(seeprom));
 }
 
+// comment this out to test ohci stuff instead
+#define TEST_WITH_TIMER
+
 int main(void)
 {
 	int vmode = -1;
@@ -98,14 +102,19 @@ int main(void)
 	irq_initialize();
 	irq_bw_enable(BW_PI_IRQ_RESET);
 	irq_bw_enable(BW_PI_IRQ_HW); //hollywood pic
+#ifdef TEST_WITH_TIMER
+	irq_hw_enable(IRQ_TIMER);
+	write32(HW_ALARM, read32(HW_TIMER)+3*2000000);
+	printf("Prepare to die, in 3 seconds your Wii will explode...\n");
+#else
 	irq_hw_enable(IRQ_OHCI0);
-
 	ohci_init();
+#endif
 
 	u32 version = ipc_getvers();
 	u16 mini_version_major = version >> 16 & 0xFFFF;
 	u16 mini_version_minor = version & 0xFFFF;
-	printf("Mini version: %d.%0d\n", mini_version_major, mini_version_minor);
+	//printf("Mini version: %d.%0d\n", mini_version_major, mini_version_minor);
 
 	if (version < MINIMUM_MINI_VERSION) {
 		printf("Sorry, this version of MINI (armboot.bin)\n"
@@ -120,6 +129,13 @@ int main(void)
 	testOTP();
 	printf("bye, world!\n");
 	*/
+#ifdef TEST_WITH_TIMER
+	u8 countdown = 4;
+	while (countdown--) {
+		printf("...%d...%s", countdown, (countdown==0)?"....OMG!!!!!\n":"");
+		udelay(1000000);
+	}
+#endif
 
 	while(1) {
 		// just to get sure we are still in this loop
