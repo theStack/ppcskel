@@ -111,11 +111,16 @@ void ohci_init()
  
 	dbg_op_state();
 
-	u8 countdown = 5;
-	while(countdown--) {
-		sync_before_read(&hcca_oh0, 256);
-		hexdump(&hcca_oh0, 256);
-		printf("\n");
+	u8 countdown = 0;
+	u8 *hcca = (u8*)(&hcca_oh0);
+	while(1) {
+		sync_before_read(hcca, 256);
+		//hexdump(&hcca_oh0, 256);
+		printf("HCCA->frame_no after %d seconds: %d\n", countdown++, 
+			hcca[128] |
+			(hcca[129] << 8) |
+			(hcca[130] << 16) |
+			(hcca[131] << 24));
 		udelay(1000000);
 	}
 }
