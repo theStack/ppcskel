@@ -15,6 +15,8 @@ Copyright (C) 2009     Sebastian Falbesoner <sebastian.falbesoner@gmail.com>
 #include "irq.h"
 #include "string.h"
 
+void hexdump(void *d, int len);
+
 static struct ohci_hcca hcca_oh0;
 
 static void dbg_op_state() 
@@ -106,8 +108,16 @@ void ohci_init()
 	write32(OHCI0_HC_INT_ENABLE, OHCI_INTR_INIT);
 
 	irq_restore(cookie);
-
+ 
 	dbg_op_state();
+
+	u8 countdown = 5;
+	while(countdown--) {
+		sync_before_read(&hcca_oh0, 256);
+		hexdump(&hcca_oh0, 256);
+		printf("\n");
+		udelay(1000000);
+	}
 }
 
 void ohci0_irq() 
