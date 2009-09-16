@@ -15,6 +15,12 @@ Copyright (C) 2009     Sebastian Falbesoner <sebastian.falbesoner@gmail.com>
 #include "irq.h"
 #include "string.h"
 
+// macros for accessing u32 variables that need to be in little endian byte order
+#define ACCESS_LE(dword) ( ((dword & 0xFF000000) >> 24) | \
+			   ((dword & 0x00FF0000) >> 8) | \
+			   ((dword & 0x0000FF00) << 8) |  \
+			   ((dword & 0x000000FF) << 24) )
+
 void hexdump(void *d, int len);
 
 static struct ohci_hcca hcca_oh0;
@@ -116,11 +122,8 @@ void ohci_init()
 	while(1) {
 		sync_before_read(hcca, 256);
 		//hexdump(&hcca_oh0, 256);
-		printf("HCCA->frame_no after %d seconds: %d\n", countdown++, 
-			hcca[128] |
-			(hcca[129] << 8) |
-			(hcca[130] << 16) |
-			(hcca[131] << 24));
+		printf("HCCA->frame_no after %d seconds: %d\n", countdown++, ACCESS_LE(hcca_oh0.frame_no));
+		printf("HCCA->frame_no WITHOUT conversion macro: %d\n", hcca_oh0.frame_no);
 		udelay(1000000);
 	}
 }
