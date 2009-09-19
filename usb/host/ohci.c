@@ -383,7 +383,7 @@ void hcdi_init()
 	//wtf?
 	wait_ms ((read32(OHCI0_HC_RH_DESCRIPTOR_A) >> 23) & 0x1fe);
 
-	configure_ports((u8)1);
+	//configure_ports((u8)1);
 	irq_restore(cookie);
 
 	dbg_op_state();
@@ -459,8 +459,9 @@ void hcdi_irq()
 	if (flags & OHCI_INTR_RHSC) {
 		printf("RootHubStatusChange\n");
 		/* TODO: set some next_statechange variable... */
-		configure_ports(0);
+		//configure_ports(0);
 		write32(OHCI0_HC_INT_STATUS, OHCI_INTR_RD | OHCI_INTR_RHSC);
+
 	}
 	/* ResumeDetected */
 	else if (flags & OHCI_INTR_RD) {
@@ -498,4 +499,117 @@ void show_frame_no()
 {
 	sync_before_read(&hcca_oh0, 256);
 	printf("***** frame_no: %d *****\n", ACCESS_LE(hcca_oh0.frame_no));
+}
+
+static void show_port_status(u32 portreg)
+{
+	u32 status = read32(portreg);
+	printf("port status register summary:\n-----------------------------\n");
+	printf("CurrentConnectStatus:      %d\n", (status>>0)&1);
+	printf("PortEnableStatus:          %d\n", (status>>1)&1);
+	printf("PortSuspendStatus:         %d\n", (status>>2)&1);
+	printf("PowerOverCurrentIndicator: %d\n", (status>>3)&1);
+	printf("PortResetStatus:           %d\n", (status>>4)&1);
+	printf("PortPowerStatus:           %d\n", (status>>8)&1);
+	printf("LowSpeedDeviceAttached:    %d\n", (status>>9)&1);
+	printf("ConnectStatusChange:       %d\n", (status>>16)&1);
+	printf("PortEnableStatusChange:    %d\n", (status>>17)&1);
+	printf("PortSuspendStatusChange:   %d\n", (status>>18)&1);
+	printf("OvercurrentIndicatorChange:%d\n", (status>>19)&1);
+	printf("PortResetStatusChange:     %d\n", (status>>20)&1);
+}
+
+void get_device_descriptor()
+{
+	u8 new_attached_device = 0;
+	u32 reg;
+
+	/* enable and reset ports for new device */
+	for (reg=OHCI0_HC_RH_PORT_STATUS_1; reg<=OHCI0_HC_RH_PORT_STATUS_2; reg+=4) {
+		u32 status = read32(reg);
+
+		/* check for new attached device */
+		if ((status & RH_PS_CSC) && (status & RH_PS_CCS)) {
+			printf("--- new device on port %d!\n", (reg-OHCI0_HC_RH_PORT_STATUS_1)/4+1);
+
+			/* ack connect status change */
+			write32(reg, RH_PS_CSC);
+
+			/* enable port */
+			write32(reg, RH_PS_PES);
+			if (!(read32(reg) & RH_PS_PES)) {
+				printf("--- couldn't activate port -> fail!\n");
+				return;
+			}
+			printf("--- port enabled\n");
+
+			/* reset port */
+			write32(reg, RH_PS_PRS);
+			while(!(read32(reg) & RH_PS_PRSC));
+
+			/* ack reset status change */
+			write32(reg, RH_PS_PRSC);
+			printf("--- port reset successful\n");
+
+			new_attached_device = 1;
+			break;
+		}
+	}
+
+	/* only continue if there was a device */
+	if (!new_attached_device) {
+		printf("--- no new device found, returning\n");
+		return;
+	}
+
+	/* try to send a GetDescriptor control message - build setup data0 package*/
+	u8 buffer[64];
+	memset(buffer, 0xcc, 64);
+	buffer[0] = 0x80;
+	buffer[1] = 0x06;
+	buffer[2] = 0x00;
+	buffer[3] = 0x01;
+	buffer[4] = 0x00;
+	buffer[5] = 0x00;
+	buffer[6] = 0x12;
+	buffer[7] = 0x00;
+
+	/* build single transfer descriptor */
+	struct general_td *td = memalign(16, sizeof(struct general_td));
+	td->flags = ACCESS_LE(7<<21); /* only set DelayInterrupt to 111, all other fields to zero */
+	td->cbp = ACCESS_LE(virt_to_phys(&(buffer[0])));
+	td->be = ACCESS_LE(virt_to_phys(&(buffer[7])));
+	td->nexttd = ACCESS_LE(0);
+	printf("--- td built on address %08X\n", (void*)td);
+
+	/* build single endpoint descriptor */
+	struct endpoint_descriptor *ed = memalign(16, sizeof(struct endpoint_descriptor));
+	/* FunctionAddress=0, EndpointAddress=0, Direction=0, Skip=0, Format=0, Speed=1, MPS=8 */
+	ed->flags = ACCESS_LE((8<<16) | (1<<13));
+	ed->headp = ACCESS_LE(virt_to_phys(td));
+	ed->tailp = ACCESS_LE(0);
+	printf("--- ed built on address %08X\n", (void*)ed);
+
+	/* flush all that stuff and tell controller to start working! */
+	sync_after_write(td, sizeof(struct general_td));
+	sync_after_write(ed, sizeof(struct endpoint_descriptor));
+	sync_after_write(buffer, 8);
+	//control_quirk();
+	write32(OHCI0_HC_CTRL_HEAD_ED, virt_to_phys(ed));
+	set32(OHCI0_HC_CONTROL, OHCI_CTRL_CLE);
+	write32(OHCI0_HC_COMMAND_STATUS, OHCI_CLF);
+	printf("--- told ohci controller to start working\n");
+
+	u32 current_ed, counter=10;
+	while((current_ed = read32(OHCI0_HC_CTRL_CURRENT_ED))) {
+		printf("current_ed: %08X\n", current_ed);
+		printf("\tHcCommandStatusReg: %08X\n", read32(OHCI0_HC_COMMAND_STATUS));
+
+		counter--;
+		if (counter == 0)
+			break;
+	}
+	printf("--- finished ;-)\n");
+	hexdump(buffer, 64);
+
 }
