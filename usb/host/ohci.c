@@ -593,9 +593,10 @@ void get_device_descriptor()
 	/* flush all that stuff and tell controller to start working! */
 	sync_after_write(td, sizeof(struct general_td));
 	sync_after_write(ed, sizeof(struct endpoint_descriptor));
-	sync_after_write(buffer, 8);
+	sync_after_write(buffer, 64);
 	//control_quirk();
 	write32(OHCI0_HC_CTRL_HEAD_ED, virt_to_phys(ed));
+	//write32(OHCI0_HC_CTRL_HEAD_ED, (u32)ed);
 	set32(OHCI0_HC_CONTROL, OHCI_CTRL_CLE);
 	write32(OHCI0_HC_COMMAND_STATUS, OHCI_CLF);
 	printf("--- told ohci controller to start working\n");
@@ -610,6 +611,9 @@ void get_device_descriptor()
 			break;
 	}
 	printf("--- finished ;-)\n");
+	sync_before_read(buffer, 64);
 	hexdump(buffer, 64);
 
+	free(td);
+	free(ed);
 }
