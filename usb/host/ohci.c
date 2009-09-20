@@ -529,7 +529,6 @@ static void show_port_status(u32 portreg)
 
 void get_device_descriptor()
 {
-	int i;
 	u8 new_attached_device = 0;
 	u32 reg;
 
