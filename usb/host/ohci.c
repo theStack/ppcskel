@@ -498,6 +498,12 @@ void hcdi_irq()
 void show_frame_no()
 {
 	sync_before_read(&hcca_oh0, 256);
+	/*
+	printf("***** &hcca: %08X, HcHCCA: %08X\n", 
+			&hcca_oh0,
+			read32(OHCI0_HC_HCCA));
+	*/
+	printf("***** HcControlCurrentED: %08X\n", read32(OHCI0_HC_CTRL_CURRENT_ED));
 	printf("***** hcca.frame_no: %d, HcFmNumber: %d *****\n",
 		ACCESS_LE(hcca_oh0.frame_no),
 		read32(OHCI0_HC_FM_NUMBER));
@@ -523,6 +529,13 @@ static void show_port_status(u32 portreg)
 
 void get_device_descriptor()
 {
+#define SHOW_FRAME_STUFF(n) \
+	for (i=0; i<n; i++) { \
+		printf("***** hcca.frame_no: %d, HcFmNumber: %d *****\n", \
+			ACCESS_LE(hcca_oh0.frame_no), \
+			read32(OHCI0_HC_FM_NUMBER)); \
+	}
+	int i;
 	u8 new_attached_device = 0;
 	u32 reg;
 
@@ -564,6 +577,9 @@ void get_device_descriptor()
 		return;
 	}
 
+	printf("--- new device found, here we go...\n");
+	SHOW_FRAME_STUFF(5);
+
 	/* try to send a GetDescriptor control message - build setup data0 package*/
 	u8 buffer[64];
 	memset(buffer, 0xcc, 64);
@@ -597,10 +613,11 @@ void get_device_descriptor()
 	sync_after_write(ed, sizeof(struct endpoint_descriptor));
 	sync_after_write(buffer, 64);
 	//control_quirk();
+	SHOW_FRAME_STUFF(5);
 	write32(OHCI0_HC_CTRL_HEAD_ED, virt_to_phys(ed));
 	//write32(OHCI0_HC_CTRL_HEAD_ED, (u32)ed);
-	set32(OHCI0_HC_CONTROL, OHCI_CTRL_CLE);
 	write32(OHCI0_HC_COMMAND_STATUS, OHCI_CLF);
+	set32(OHCI0_HC_CONTROL, OHCI_CTRL_CLE);
 	printf("--- told ohci controller to start working\n");
 
 	u32 current_ed, counter=10;

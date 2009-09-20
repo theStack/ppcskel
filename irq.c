@@ -61,10 +61,10 @@ void irq_handler(void)
 	flags = flags & enabled;
 
 	if (flags & (1<<BW_PI_IRQ_RESET)) { 
-		write32(BW_PI_IRQFLAG, 1<<BW_PI_IRQ_RESET);
 		show_frame_no();
 		get_device_descriptor();
 		//printf("IRQ-BW RESET\n");
+		write32(BW_PI_IRQFLAG, 1<<BW_PI_IRQ_RESET);
 	}
 	if (flags & (1<<BW_PI_IRQ_HW)) { //HW-PIC IRQ
 		u32 hw_enabled = read32(HW_PPCIRQMASK);
