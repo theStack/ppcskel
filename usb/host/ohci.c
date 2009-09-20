@@ -531,6 +531,7 @@ void get_device_descriptor()
 {
 #define SHOW_FRAME_STUFF(n) \
 	for (i=0; i<n; i++) { \
+		sync_before_read(&hcca_oh0, 256); \
 		printf("***** hcca.frame_no: %d, HcFmNumber: %d *****\n", \
 			ACCESS_LE(hcca_oh0.frame_no), \
 			read32(OHCI0_HC_FM_NUMBER)); \
@@ -607,18 +608,20 @@ void get_device_descriptor()
 	ed->headp = ACCESS_LE(virt_to_phys(td));
 	ed->tailp = ACCESS_LE(0);
 	printf("--- ed built on address %08X\n", (void*)ed);
+	SHOW_FRAME_STUFF(5);
 
 	/* flush all that stuff and tell controller to start working! */
 	sync_after_write(td, sizeof(struct general_td));
 	sync_after_write(ed, sizeof(struct endpoint_descriptor));
 	sync_after_write(buffer, 64);
+
 	//control_quirk();
-	SHOW_FRAME_STUFF(5);
 	write32(OHCI0_HC_CTRL_HEAD_ED, virt_to_phys(ed));
 	//write32(OHCI0_HC_CTRL_HEAD_ED, (u32)ed);
 	write32(OHCI0_HC_COMMAND_STATUS, OHCI_CLF);
 	set32(OHCI0_HC_CONTROL, OHCI_CTRL_CLE);
 	printf("--- told ohci controller to start working\n");
+	SHOW_FRAME_STUFF(5);
 
 	u32 current_ed, counter=10;
 	while((current_ed = read32(OHCI0_HC_CTRL_CURRENT_ED))) {
