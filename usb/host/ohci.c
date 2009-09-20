@@ -498,7 +498,9 @@ void hcdi_irq()
 void show_frame_no()
 {
 	sync_before_read(&hcca_oh0, 256);
-	printf("***** frame_no: %d *****\n", ACCESS_LE(hcca_oh0.frame_no));
+	printf("***** hcca.frame_no: %d, HcFmNumber: %d *****\n",
+		ACCESS_LE(hcca_oh0.frame_no),
+		read32(OHCI0_HC_FM_NUMBER));
 }
 
 static void show_port_status(u32 portreg)
