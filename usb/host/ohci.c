@@ -597,12 +597,20 @@ void get_device_descriptor()
 	ed->flags = ACCESS_LE((8<<16) | (1<<13));
 	ed->headp = ACCESS_LE(virt_to_phys(td));
 	ed->tailp = ACCESS_LE(0);
+	ed->nexted = ACCESS_LE(0);
 	printf("--- ed built on address %08X\n", (void*)ed);
 
 	/* flush all that stuff and tell controller to start working! */
 	sync_after_write(td, sizeof(struct general_td));
 	sync_after_write(ed, sizeof(struct endpoint_descriptor));
 	sync_after_write(buffer, 64);
+	/*
+	printf("\n=============== td hexdump ===============\n");
+	hexdump(td, sizeof(struct general_td));
+
+	printf("\n=============== ed hexdump ===============\n");
+	hexdump(ed, sizeof(struct endpoint_descriptor));
+	*/
 
 	//control_quirk();
 	write32(OHCI0_HC_CTRL_HEAD_ED, virt_to_phys(ed));
