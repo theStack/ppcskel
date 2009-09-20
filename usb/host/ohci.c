@@ -709,8 +709,8 @@ void get_device_descriptor()
 	hexdump(td3, 16);
 
 	write32(OHCI0_HC_CONTROL, read32(OHCI0_HC_CONTROL)&~OHCI_CTRL_CLE);
-	free(td1);
-	free(td2);
-	free(td3);
-	free(ed);
+	//free(td1);
+	//free(td2);
+	//free(td3);
+	//free(ed);
 }
