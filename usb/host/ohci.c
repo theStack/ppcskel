@@ -540,6 +540,14 @@ void get_device_descriptor()
 		if ((status & RH_PS_CSC) && (status & RH_PS_CCS)) {
 			printf("--- new device on port %d!\n", (reg-OHCI0_HC_RH_PORT_STATUS_1)/4+1);
 
+			u32 fuck;
+			for (fuck=OHCI0_REG_BASE; fuck<=(OHCI0_REG_BASE+0x58); fuck+=4) {
+				printf("%02X: %08X\n", fuck-OHCI0_REG_BASE, read32(fuck));
+			}
+
+			/* deactivate port */
+			write32(reg, RH_PS_CCS);
+
 			/* ack connect status change */
 			write32(reg, RH_PS_CSC);
 
@@ -550,6 +558,9 @@ void get_device_descriptor()
 				return;
 			}
 			printf("--- port enabled\n");
+
+			/* ack port enable status change */
+			write32(reg, RH_PS_PESC);
 
 			/* reset port */
 			write32(reg, RH_PS_PRS);
@@ -628,10 +639,21 @@ void get_device_descriptor()
 	//control_quirk();
 	sync_before_read(&hcca_oh0, 256);
 	printf("done queue before: %08X\n", ACCESS_LE(hcca_oh0.done_head));
+	sync_before_read(td1, sizeof(struct general_td));
+	printf("--- td1 CC: %d\n", (ACCESS_LE(td1->flags)>>28)&0xf);
+	hexdump(td1, 16);
+	sync_before_read(td2, sizeof(struct general_td));
+	printf("--- td2 CC: %d\n", (ACCESS_LE(td2->flags)>>28)&0xf);
+	hexdump(td2, 16);
+	sync_before_read(td3, sizeof(struct general_td));
+	printf("--- td3 CC: %d\n", (ACCESS_LE(td3->flags)>>28)&0xf);
+	hexdump(td3, 16);
+
 	write32(OHCI0_HC_CTRL_HEAD_ED, virt_to_phys(ed));
 	write32(OHCI0_HC_COMMAND_STATUS, OHCI_CLF);
 	set32(OHCI0_HC_CONTROL, OHCI_CTRL_CLE);
 	printf("--- told ohci controller to start working\n");
+	printf("HcDoneHead: %08X\n", read32(OHCI0_HC_DONE_HEAD));
 
 	u32 current_ed, counter=10;
 	while((current_ed = read32(OHCI0_HC_CTRL_CURRENT_ED))) {
@@ -643,7 +665,6 @@ void get_device_descriptor()
 			break;
 	}
 
-	wait_ms(500);
 	printf("--- finished ;-)\n");
 	sync_before_read(buffer, 64);
 	hexdump(buffer, 64);
@@ -652,10 +673,13 @@ void get_device_descriptor()
 
 	sync_before_read(td1, sizeof(struct general_td));
 	printf("--- td1 CC: %d\n", (ACCESS_LE(td1->flags)>>28)&0xf);
+	hexdump(td1, 16);
 	sync_before_read(td2, sizeof(struct general_td));
 	printf("--- td2 CC: %d\n", (ACCESS_LE(td2->flags)>>28)&0xf);
+	hexdump(td2, 16);
 	sync_before_read(td3, sizeof(struct general_td));
 	printf("--- td3 CC: %d\n", (ACCESS_LE(td3->flags)>>28)&0xf);
+	hexdump(td3, 16);
 
 	write32(OHCI0_HC_CONTROL, read32(OHCI0_HC_CONTROL)&~OHCI_CTRL_CLE);
 	free(td1);
