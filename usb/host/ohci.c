@@ -637,6 +637,7 @@ void get_device_descriptor()
 	sync_after_write(buffer, 64);
 
 	//control_quirk();
+	/*
 	sync_before_read(&hcca_oh0, 256);
 	printf("done queue before: %08X\n", ACCESS_LE(hcca_oh0.done_head));
 	sync_before_read(td1, sizeof(struct general_td));
@@ -648,11 +649,37 @@ void get_device_descriptor()
 	sync_before_read(td3, sizeof(struct general_td));
 	printf("--- td3 CC: %d\n", (ACCESS_LE(td3->flags)>>28)&0xf);
 	hexdump(td3, 16);
+	*/
+	printf("=================== ed before start =============\n");
+	sync_before_read(ed, 16);
+	hexdump(ed, 16);
 
 	write32(OHCI0_HC_CTRL_HEAD_ED, virt_to_phys(ed));
 	write32(OHCI0_HC_COMMAND_STATUS, OHCI_CLF);
 	set32(OHCI0_HC_CONTROL, OHCI_CTRL_CLE);
+	printf("=================== eds after start =============\n");
+	sync_before_read(ed, 16);
+	hexdump(ed, 16);
+	sync_before_read(ed, 16);
+	hexdump(ed, 16);
+	sync_before_read(ed, 16);
+	hexdump(ed, 16);
+	sync_before_read(ed, 16);
+	hexdump(ed, 16);
+	sync_before_read(ed, 16);
+	hexdump(ed, 16);
+	sync_before_read(ed, 16);
+	hexdump(ed, 16);
+	sync_before_read(ed, 16);
+	hexdump(ed, 16);
+	sync_before_read(ed, 16);
+	hexdump(ed, 16);
+	sync_before_read(ed, 16);
+	hexdump(ed, 16);
+	sync_before_read(ed, 16);
+	hexdump(ed, 16);
 	printf("--- told ohci controller to start working\n");
+
 	printf("HcDoneHead: %08X\n", read32(OHCI0_HC_DONE_HEAD));
 
 	u32 current_ed, counter=10;
