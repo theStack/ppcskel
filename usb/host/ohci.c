@@ -579,41 +579,56 @@ void get_device_descriptor()
 	buffer[3] = 0x01;
 	buffer[4] = 0x00;
 	buffer[5] = 0x00;
-	buffer[6] = 0x12;
+	//buffer[6] = 0x12;
+	buffer[6] = 0x08;
 	buffer[7] = 0x00;
 
-	/* build single transfer descriptor */
-	struct general_td *td = memalign(16, sizeof(struct general_td));
-	td->flags = ACCESS_LE(7<<21); /* only set DelayInterrupt to 111, all other fields to zero */
-	td->cbp = ACCESS_LE(virt_to_phys(&(buffer[0])));
-	td->be = ACCESS_LE(virt_to_phys(&(buffer[7])));
-	td->nexttd = ACCESS_LE(0);
-	printf("--- td built on address %08X\n", (void*)td);
+	/* build SETUP transfer descriptor */
+	struct general_td *td1 = memalign(16, sizeof(struct general_td));
+	td1->flags = ACCESS_LE((7<<21) | (2<<24)); /* set DelayInterrupt to 111, DP=SETUP, toggle=0 */
+	td1->cbp = ACCESS_LE(virt_to_phys(&(buffer[0])));
+	td1->be = ACCESS_LE(virt_to_phys(&(buffer[7])));
+	printf("--- td[SETUP] built on address %08X\n", (void*)td1);
+
+	/* build IN transfer descriptor */
+	struct general_td *td2 = memalign(16, sizeof(struct general_td));
+	td2->flags = ACCESS_LE((7<<21) | (0x02<<19)); /* set DelayInterrupt to 111 and DP=IN, toggle=[get from ed] */
+	td2->cbp = ACCESS_LE(virt_to_phys(&(buffer[0])));
+	td2->be = ACCESS_LE(virt_to_phys(&(buffer[7])));
+	printf("--- td[IN] built on address %08X\n", (void*)td2);
+
+	/* build OUT transfer descriptor */
+	struct general_td *td3 = memalign(16, sizeof(struct general_td));
+	td3->flags = ACCESS_LE((7<<21) | (0x01<<19) | (3<<24)); /* set DelayInterrupt to 111 and DP=OUT, toggle=[get from ed] */
+	td3->cbp = ACCESS_LE(0);
+	td3->be = ACCESS_LE(0);
+	printf("--- td[OUT] built on address %08X\n", (void*)td3);
+
+	/* link those TDs */
+	td1->nexttd = ACCESS_LE(virt_to_phys(td2));
+	td2->nexttd = ACCESS_LE(virt_to_phys(td3));
+	td3->nexttd = ACCESS_LE(0);
 
 	/* build single endpoint descriptor */
 	struct endpoint_descriptor *ed = memalign(16, sizeof(struct endpoint_descriptor));
 	/* FunctionAddress=0, EndpointAddress=0, Direction=0, Skip=0, Format=0, Speed=1, MPS=8 */
 	ed->flags = ACCESS_LE((8<<16) | (1<<13));
-	ed->headp = ACCESS_LE(virt_to_phys(td));
+	ed->headp = ACCESS_LE(virt_to_phys(td1));
 	ed->tailp = ACCESS_LE(0);
 	ed->nexted = ACCESS_LE(0);
 	printf("--- ed built on address %08X\n", (void*)ed);
 
 	/* flush all that stuff and tell controller to start working! */
-	sync_after_write(td, sizeof(struct general_td));
+	sync_after_write(td1, sizeof(struct general_td));
+	sync_after_write(td2, sizeof(struct general_td));
+	sync_after_write(td3, sizeof(struct general_td));
 	sync_after_write(ed, sizeof(struct endpoint_descriptor));
 	sync_after_write(buffer, 64);
-	/*
-	printf("\n=============== td hexdump ===============\n");
-	hexdump(td, sizeof(struct general_td));
-
-	printf("\n=============== ed hexdump ===============\n");
-	hexdump(ed, sizeof(struct endpoint_descriptor));
-	*/
 
 	//control_quirk();
+	sync_before_read(&hcca_oh0, 256);
+	printf("done queue before: %08X\n", ACCESS_LE(hcca_oh0.done_head));
 	write32(OHCI0_HC_CTRL_HEAD_ED, virt_to_phys(ed));
-	//write32(OHCI0_HC_CTRL_HEAD_ED, (u32)ed);
 	write32(OHCI0_HC_COMMAND_STATUS, OHCI_CLF);
 	set32(OHCI0_HC_CONTROL, OHCI_CTRL_CLE);
 	printf("--- told ohci controller to start working\n");
@@ -627,10 +642,24 @@ void get_device_descriptor()
 		if (counter == 0)
 			break;
 	}
+
+	wait_ms(500);
 	printf("--- finished ;-)\n");
 	sync_before_read(buffer, 64);
 	hexdump(buffer, 64);
+	sync_before_read(&hcca_oh0, 256);
+	printf("done queue after: %08X\n", ACCESS_LE(hcca_oh0.done_head));
 
-	free(td);
+	sync_before_read(td1, sizeof(struct general_td));
+	printf("--- td1 CC: %d\n", (ACCESS_LE(td1->flags)>>28)&0xf);
+	sync_before_read(td2, sizeof(struct general_td));
+	printf("--- td2 CC: %d\n", (ACCESS_LE(td2->flags)>>28)&0xf);
+	sync_before_read(td3, sizeof(struct general_td));
+	printf("--- td3 CC: %d\n", (ACCESS_LE(td3->flags)>>28)&0xf);
+
+	write32(OHCI0_HC_CONTROL, read32(OHCI0_HC_CONTROL)&~OHCI_CTRL_CLE);
+	free(td1);
+	free(td2);
+	free(td3);
 	free(ed);
 }
