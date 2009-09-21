@@ -118,6 +118,12 @@ void simple_aes_copy(void)
 	write32(AES_CMD, 0x80000000);
 	while(read32(AES_CMD) & 0x80000000);
 
+	/* check if any errors occured */
+	if (read32(AES_CMD) & (1<<29)) {
+		printf("FAIL!!!\n");
+		goto quit;
+	}
+
 	/* show result */
 	printf("result is there:\n");
 	sync_before_read(source, 16); // should not be needed, but just to get sure...
@@ -126,6 +132,7 @@ void simple_aes_copy(void)
 	hexdump(destination, 16);
 
 	/* now THIS should show that something is wrong with memory (MMU stuff etc.?) */
+quit:
 	free(source);
 	free(destination);
 }
