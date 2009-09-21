@@ -145,6 +145,7 @@ usb_device *usb_add_device()
 	printf("=============\nbuf: 0x%08X\nafter usb control msg:\n", buf);
 	hexdump(buf, sizeof(buf));
 
+
 	/* save only really neccessary values for this small usbstack */
 	dev->bDeviceClass = (u8) buf[4];
 	dev->bDeviceSubClass = (u8) buf[5];
@@ -169,6 +170,22 @@ usb_device *usb_add_device()
 	 * idProduct					0x000e
 	 * bcdDevice						1.00
 	 */
+	usb_control_msg(dev, 0x80, GET_DESCRIPTOR, (STRING<<8) | 2, 0, 0x20, buf, 8, 0);
+	//hexdump(buf, sizeof(buf));
+	printf("String Descriptor [1]: ");
+	u8 i;
+	for (i=2; i<buf[0]; i+=2)
+		printf("%c", buf[i]);
+	printf("\n");
+
+	/*
+	usb_control_msg(dev, 0x80, GET_DESCRIPTOR, (STRING<<8) | 2, 0, 0x20, buf, 8, 0);
+	printf("String Descriptor [2]: ");
+	for (i=2; i<buf[0]; i+=2)
+		printf("%c", buf[i]);
+	printf("\n");
+	*/
+
 
 	// string descriptoren werden nicht im arbeitsspeicher gehalten -> on demand mit 
 	// entprechenden funktionen
@@ -266,6 +283,7 @@ u16 usb_submit_irp(usb_irp *irp)
 	usb_transfer_descriptor *td;
 	u8 runloop = 1;
 	u16 restlength = irp->len;
+	//int restlength = irp->len;
 	char *td_buf_ptr = irp->buffer;
 	char mybuf[64];
 
@@ -325,7 +343,9 @@ u16 usb_submit_irp(usb_irp *irp)
 		/* check bit 7 of bmRequestType */
 		if (bmRequestType & 0x80) { 
 			/* schleife die die tds generiert */
+			u8 counter = 0;
 			while (runloop || (restlength < 1)) {
+				printf("restlength: %d, irp->epsize: %d\n", restlength, irp->epsize);
 				td = usb_create_transfer_descriptor(irp);
 				td->actlen = irp->epsize;
 				/* stop loop if all bytes are send */
@@ -357,6 +377,11 @@ u16 usb_submit_irp(usb_irp *irp)
 				/* pruefe ob noch weitere Pakete vom Device abgeholt werden muessen */
 				restlength = restlength - irp->epsize;
 				free(td);
+				counter++;
+				if (counter == 6) {
+					printf("ABGEBROCHEN WEIL ZU VIEL... JAWOLL ;-)\n");
+					break;
+				}
 			}
 		}
 
